@@ -1,0 +1,21 @@
+#!/bin/bash
+
+command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 1; }
+
+
+
+apiCall="http://ldf.lodlaundromat.org"
+
+
+while [ -n "$apiCall" ]; do
+        response=$(curl -s $apiCall -H "Accept: application/n-triples")
+        
+        #get the MD5s. Easy to recognize with regex (32 char long)
+        echo "$response" | grep "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rdfs.org/ns/void#Dataset>" | sed 's/<http:\/\/ldf\.lodlaundromat\.org\/\([a-z0-9]\{32\}\).*/\1/;tx;d;:x'
+
+        
+        
+        #fetch next page to request. We have one, when there is a hydra 'nextPage' predicate. In that case, fetch the object uri
+        apiCall=$(echo "$response" | grep nextPage |  sed 's/.*nextPage>\s*<\(.*\)>\s*.$/\1/')
+done
+
