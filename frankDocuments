@@ -1,0 +1,192 @@
+#!/bin/bash
+
+command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 1; }
+
+
+
+##
+## First handle arguments
+##
+# Usage info
+show_help() {
+cat << EOF
+Usage: ${0##*/} [options]
+Fetch LOD document references from the LOD Laundromat
+    -h              
+        display this help and exit
+    -b BUFFER
+    --buffer BUFFER
+        Buffer x documents references in memory. Default: 10
+    --minTriples MINTRIPLES
+        Only fetch documents with at least this amount of triples
+    --maxTriples MAXTRIPLES
+        Only fetch documents with at most this amount of triples
+    -d
+    --downloadUri
+        Only print the download URI
+    -r
+    --resourceUri
+        Only print the LOD Laundromat document resource URI
+EOF
+}
+  
+limit=10
+download=true
+resource=true 
+minTriples=1;
+maxTriples=
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -h|-\?|--help)   # Call a "show_help" function to display a synopsis, then exit.
+            show_help
+            exit
+            ;;
+        
+        ##parse limit size ('buffer')
+        -b|--buffer)
+            if [ "$#" -gt 1 ]; then
+                limit=$2
+                shift 2
+                continue
+            else
+                echo 'ERROR: Must specify a non-empty "--buffer BUFFER" argument.' >&2
+                exit 1
+            fi
+            ;;
+        --buffer=?*)
+            limit=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --buffer=)         # Handle the case of an empty --file=
+            echo 'ERROR: Must specify a non-empty "--buffer BUFFER" argument.' >&2
+            exit 1
+            ;;
+            
+        ##parse min triples)
+        --minTriples)
+            if [ "$#" -gt 1 ]; then
+                minTriples=$2
+                shift 2
+                continue
+            else
+                echo 'ERROR: Must specify a non-empty "--minTriples MINTRIPLES" argument.' >&2
+                exit 1
+            fi
+            ;;
+        --minTriples=?*)
+            minTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --minTriples=)         # Handle the case of an empty --file=
+            echo 'ERROR: Must specify a non-empty "--minTriples MINTRIPLES" argument.' >&2
+            exit 1
+            ;;
+        ##parse max triples)
+        --maxTriples)
+            if [ "$#" -gt 1 ]; then
+                maxTriples=$2
+                shift 2
+                continue
+            else
+                echo 'ERROR: Must specify a non-empty "--maxTriples MAXTRIPLES" argument.' >&2
+                exit 1
+            fi
+            ;;
+        --maxTriples=?*)
+            maxTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --maxTriples=)         # Handle the case of an empty --file=
+            echo 'ERROR: Must specify a non-empty "--maxTriples MAXTRIPLES" argument.' >&2
+            exit 1
+            ;;
+            
+         
+        -d|--downloadUri)
+            resource=false;
+            ;;
+        -r|--resourceUri)
+            download=false;
+            ;;
+        --)              # End of all options.
+            shift
+            break
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)               # Default case: If no more options then break out of the loop.
+            break
+    esac
+
+    shift
+done
+
+
+
+
+
+
+
+offset=10
+endpoint="http://sparql.backend.lodlaundromat.org/"
+prefixes="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> PREFIX llo: <http://lodlaundromat.org/ontology/> PREFIX ll: <http://lodlaundromat.org/resource/>"
+
+
+
+
+downloadUrl="http://download.lodlaundromat.org"
+docTpfs="?doc llo:triples ?triples ; llo:md5 ?md5 ."
+filterMinTriples="FILTER(?triples >= $minTriples) "
+filterMaxTriples=""
+if [ -n "$maxTriples" ]; then
+    filterMaxTriples="FILTER(?triples <= $maxTriples) " 
+fi
+
+#Start fetching docs
+while true; do
+        limitOffset="LIMIT $limit OFFSET $offset";
+        
+        query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filterMinTriples $filterMaxTriples} $limitOffset"
+        #nicest approach would be to stream through results. For now, just take this quick approach
+        result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
+        
+        
+        while read -r line; do
+            if [ -z "$line" ]; then
+                #just whitespace string
+                continue
+            fi 
+            println=;
+            #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
+            if $download ; then 
+                md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
+                println="$downloadUrl/$md5"
+            fi
+            if $resource ; then
+                r=$(echo "$line" | sed 's/^\"\([^\"]*\)\".*/\1/')
+                if [ -z $println ]; then
+                    println="$r"
+                else
+                    println="$println $r"
+                fi
+                
+            fi
+            echo $println;
+        done <<< "$result"
+        
+        
+        
+        
+        
+        if [ -z "$result" ]; then
+            #no results left, we are done!
+            exit 0;
+        fi
+        
+        
+        #up offset for next query
+        offset=`expr $offset + $limit`
+done
+
+
+
+
