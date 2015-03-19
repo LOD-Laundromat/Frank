@@ -10,21 +10,21 @@ command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 
 show_help() {
 cat << EOF
 Usage: ${0##*/} [options] [DOC_RESOURCE]
-Fetch triples from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
-When a LOD Laundromat resource (DOC_RESOURCE) is passed as parameter, triples are fetched from that document.
-Otherwise, triples are fetched from the complete LOD Cloud
+Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
+When a LOD Laundromat resource (DOC_RESOURCE) is passed as parameter, statements are fetched from that document.
+Otherwise, statements are fetched from the complete LOD Cloud
 
     -h
         display this help and exit
     -s SUBJECT
     --subject SUBJECT
-        Filter triples by SUBJECT
+        Filter statements by SUBJECT
     -p PREDICATE
     --predicate PREDICATE
-        Filter triples by PREDICATE
+        Filter statements by PREDICATE
     -o OBJECT
     --object OBJECT
-        Filter triples by OBJECT
+        Filter statements by OBJECT
     -g
     --showGraph
         Return quads, where the named graph is the reference to the LOD Laundromat resource 
