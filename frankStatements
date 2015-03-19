@@ -149,8 +149,16 @@ fi
 ldfApi="http://ldf.lodlaundromat.org"
 
 processDoc() {
+    #start with a sanity check (simple non-empty check)
+    if [ -z "$1" ]; then return; fi
+    
+    #might need to use this var more often, so generate it once for this particular doc
     quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
-    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
+    
+    #extract md5 from resource url
+    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/;tx;d;:x' <<< "$1")
+    
+    if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi 
     url="$ldfApi/$md5"
     
     #while we have something to send request to, i.e. pagination has not finished yet for this document
@@ -158,6 +166,8 @@ processDoc() {
         response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
         url=
         while read quad; do
+            #skip blank lines
+            if [ -z $quad ]; then continue; fi
             if echo $quad | grep -qE '#metadata>\s*\.'; then
                 if echo $quad | grep -q 'nextPage'; then
                     url=$(echo "$quad" | sed 's/.*nextPage>\s*<\(.*\)>\s*<.*/\1/')
