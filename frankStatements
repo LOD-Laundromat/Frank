@@ -147,10 +147,6 @@ fi
 
 
 
-
-
-
-
 ldfApi="http://ldf.lodlaundromat.org"
 while read doc; do 
     quadReplace=$(echo "$doc" | sed -e 's/[\/&]/\\&/g')
@@ -159,7 +155,6 @@ while read doc; do
     
     #while we have something to send request to, i.e. pagination has not finished yet for this document
     while [ -n "$url" ]; do
-        
         response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
         url=
         while read quad; do
@@ -170,7 +165,6 @@ while read doc; do
             else 
                 if $showGraph ; then
                     echo "$quad" | sed "s/\(.*\)\.$/\1 <$quadReplace>./"
-                    exit;
                 else
                     echo $quad;
                 fi
@@ -178,6 +172,5 @@ while read doc; do
             
         done <<< "$response"
     done;
-#done < <(test -z $graph -a echo $graph || $frankDocs -r)
-done < <( $frankDocs -r)
-#or loop through $@ (remaining args)
+done < <( if [ "$#" -gt 0 ]; then for res in "$@"; do echo "$res";done else $frankDocs -r; fi )
+
