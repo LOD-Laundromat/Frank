@@ -146,11 +146,11 @@ else
 fi
 
 
-
 ldfApi="http://ldf.lodlaundromat.org"
-while read doc; do 
-    quadReplace=$(echo "$doc" | sed -e 's/[\/&]/\\&/g')
-    md5=$(echo "$doc" | sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/')
+
+processDoc() {
+    quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
+    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
     url="$ldfApi/$md5"
     
     #while we have something to send request to, i.e. pagination has not finished yet for this document
@@ -172,5 +172,21 @@ while read doc; do
             
         done <<< "$response"
     done;
-done < <( if [ "$#" -gt 0 ]; then for res in "$@"; do echo "$res";done else $frankDocs -r; fi )
+}
+
+runForDocs=true
+if [ "$#" -gt 0 ]; then
+    #there are graphs passed as arguments to the script
+    for res in "$@"; do processDoc "$res";done
+    runForDocs=false
+fi
+if [ ! -t 0 ]; then
+    #something is piped to this program
+   while read res ; do processDoc "$res" ; done
+   runForDocs=false
+fi
+if $runForDocs ; then
+    #no arguments and nothing piped. Just use the whole lod cloud
+    while read res ; do processDoc "$res" ; done < <( $frankDocs -r )
+fi
 
