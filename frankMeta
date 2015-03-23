@@ -1,0 +1,67 @@
+#!/bin/bash
+
+
+command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 1; }
+endpoint="http://sparql.backend.lodlaundromat.org"
+##
+## First handle arguments
+##
+# Usage info
+show_help() {
+cat << EOF
+Usage: ${0##*/} [options] [DOC_RESOURCE]
+Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
+Meta-data is fetched for each LOD Laundromat resource (DOC_RESOURCE) passed as arguments.
+
+    -h
+        display this help and exit
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -h|-\?|--help)   # Call a "show_help" function to display a synopsis, then exit.
+            show_help
+            exit
+            ;;
+        --)              # End of all options.
+            shift
+            break
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)               # Default case: If no more options then break out of the loop.
+            break
+    esac
+
+    shift
+done
+
+
+processDoc() {
+    #start with a sanity check (simple non-empty check)
+    if [ -z "$1" ]; then return; fi
+
+    mainTPatterns="<$1> llm:metrics ?metricDoc ; ?pred ?obj ."
+    optionalTPattern="?obj ?pred2 ?obj2 ."
+    query="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> CONSTRUCT { $mainTPatterns $optionalTPattern } WHERE { $mainTPatterns OPTIONAL{$optionalTPattern}}"
+    curl -Gs $endpoint --data-urlencode "query=$query" -H "Accept: text/plain"
+}
+
+runForDocs=false
+if [ "$#" -gt 0 ]; then
+    #there are graphs passed as arguments to the script
+    for res in "$@"; do processDoc "$res";done
+    runForDocs=false
+fi
+if [ ! -t 0 ]; then
+    #something is piped to this program
+   while read res ; do processDoc "$res" ; done
+   runForDocs=false
+fi
+if $runForDocs ; then
+    #no arguments and nothing piped. Just use the whole lod cloud
+    while read res ; do processDoc "$res" ; done < <( $frankDocs -r )
+fi
+
