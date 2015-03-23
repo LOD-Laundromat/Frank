@@ -9,7 +9,7 @@ endpoint="http://sparql.backend.lodlaundromat.org"
 # Usage info
 show_help() {
 cat << EOF
-Usage: ${0##*/} [options] [DOC_RESOURCE]
+Usage: ${0##*/} [options] DOC_RESOURCE...
 Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
 Meta-data is fetched for each LOD Laundromat resource (DOC_RESOURCE) passed as arguments.
 
@@ -48,20 +48,18 @@ processDoc() {
     query="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> CONSTRUCT { $mainTPatterns $optionalTPattern } WHERE { $mainTPatterns OPTIONAL{$optionalTPattern}}"
     curl -Gs $endpoint --data-urlencode "query=$query" -H "Accept: text/plain"
 }
-
-runForDocs=false
+showHelp=true
 if [ "$#" -gt 0 ]; then
     #there are graphs passed as arguments to the script
     for res in "$@"; do processDoc "$res";done
-    runForDocs=false
+    showHelp=false
 fi
 if [ ! -t 0 ]; then
     #something is piped to this program
    while read res ; do processDoc "$res" ; done
-   runForDocs=false
+   showHelp=false
 fi
-if $runForDocs ; then
-    #no arguments and nothing piped. Just use the whole lod cloud
-    while read res ; do processDoc "$res" ; done < <( $frankDocs -r )
+if $showHelp ; then
+    show_help
 fi
 
