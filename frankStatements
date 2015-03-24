@@ -32,7 +32,7 @@ Otherwise, statements are fetched from the complete LOD Cloud
 
 EOF
 }
-  
+
 sub=
 pred=
 obj=
@@ -119,6 +119,34 @@ while [ "$#" -gt 0 ]; do
 
     shift
 done
+
+
+
+#top25 of prefixes
+declare -A prefixes=(["yago"]="http://yago-knowledge.org/resource/" ["rdf"]="http://www.w3.org/1999/02/22-rdf-syntax-ns#" ["foaf"]="http://xmlns.com/foaf/0.1/" ["dbp"]="http://dbpedia.org/property/" ["dc"]="http://purl.org/dc/elements/1.1/" ["owl"]="http://www.w3.org/2002/07/owl#" ["rdfs"]="http://www.w3.org/2000/01/rdf-schema#" ["dbo"]="http://dbpedia.org/ontology/" ["ont"]="http://purl.org/net/ns/ontology-annot#" ["onto"]="http://www.ontotext.com/" ["skos"]="http://www.w3.org/2004/02/skos/core#" ["geo"]="http://www.w3.org/2003/01/geo/wgs84_pos#" ["rss"]="http://purl.org/rss/1.0/" ["gldp"]="http://www.w3.org/ns/people#" ["sioc"]="http://rdfs.org/sioc/ns#" ["fb"]="http://rdf.freebase.com/ns/" ["sc"]="http://purl.org/science/owl/sciencecommons/" ["geonames"]="http://www.geonames.org/ontology#" ["xsd"]="http://www.w3.org/2001/XMLSchema#" ["gr"]="http://purl.org/goodrelations/v1#" ["dcterms"]="http://purl.org/dc/terms/" ["dct"]="http://purl.org/dc/terms/" ["org"]="http://www.w3.org/ns/org#" ["dbpedia"]="http://dbpedia.org/resource/" ["qb"]="http://purl.org/linked-data/cube#" ["dbpprop"]="http://dbpedia.org/property/" ["void"]="http://rdfs.org/ns/void#")
+
+if [ -n "$sub" ]; then
+    ns=`echo "$sub"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$sub"| cut -d':' -f 2`
+        sub="${prefixes["$ns"]}$localN"
+    fi
+fi
+if [ -n "$pred" ]; then
+    ns=`echo "$pred"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$pred"| cut -d':' -f 2`
+        pred="${prefixes["$ns"]}$localN"
+    fi
+fi
+if [ -n "$obj" ]; then
+    ns=`echo "$obj"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$obj"| cut -d':' -f 2`
+        obj="${prefixes["$ns"]}$localN"
+    fi
+fi
+
 
 ##
 ## Tricky way of detecting which directory
