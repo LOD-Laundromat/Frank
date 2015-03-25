@@ -1,0 +1,474 @@
+#!/bin/bash
+
+
+command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 1; }
+ldfApi="http://ldf.lodlaundromat.org"
+endpoint="http://sparql.backend.lodlaundromat.org/"
+downloadUrl="http://download.lodlaundromat.org"
+##
+## All documentation
+##
+show_main_help() {
+cat << EOF
+Usage: ${0##*/} [-h] <command> [<args>]
+
+The three main frank commands are:
+    statements    Fetch statements from the LOD Cloud, gathered by the LOD Laundromat (add -h for help)
+    documents     Fetch LOD Laundromat document references (add -h for help)
+    meta          Fetch meta-data for a given document (add -h for help)
+EOF
+}
+
+
+
+show_statements_help() {
+cat << EOF
+usage: ${0##*/} $mode [<args>] [<documentUri>]
+
+Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
+When a LOD Laundromat document reference (<documentUri>) is passed as parameter, statements are fetched from that document.
+Otherwise, statements are fetched from the complete LOD Cloud
+
+    -h
+        display this help and exit
+    -s <subject>
+    --subject <subject>
+        Filter statements by <subject>
+    -p <predicate>
+    --predicate <predicate>
+        Filter statements by <predicate>
+    -o <object>
+    --object <object>
+        Filter statements by <object>
+    -g
+    --showGraph
+        Return quads, where the named graph is the reference to the LOD Laundromat resource 
+        of this particular dataset
+
+EOF
+}
+
+show_documents_help() {
+cat << EOF
+Usage: ${0##*/} $mode [<args>]
+
+Fetch LOD Laundromat document references
+
+    -h              
+        display this help and exit
+    -b <buffer>
+    --buffer <buffer>
+        Buffer x documents references in memory. Default: 10
+    --minTriples <minTriples>
+        Only fetch documents with at least this amount of triples
+    --maxTriples <maxTriples>
+        Only fetch documents with at most this amount of triples
+    -d
+    --downloadUri
+        Only print the download URI
+    -r
+    --resourceUri
+        Only print the LOD Laundromat document resource URI
+EOF
+}
+
+show_meta_help() {
+cat << EOF
+Usage: ${0##*/} $mode [<args>] <documentUri>...
+
+Fetch LOD Laundromat meta-data for each LOD Laundromat document references (<documentUri>) passed as arguments.
+
+    -h
+        display this help and exit
+EOF
+}
+
+#statements options
+sub=
+pred=
+obj=
+showGraph=false
+
+#documents options
+limit=10
+download=true
+resource=true 
+minTriples=1;
+maxTriples=
+
+[ "$#" -eq "0" ] && show_main_help && exit;
+mode="$1";shift;
+if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
+    
+if [[ "$mode" == "statements" ]]; then
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+            -h|-\?|--help)
+                show_statements_help
+                exit
+                ;;
+            
+            ##parse subject
+            -s|--subject)
+                if [ "$#" -gt 1 ]; then
+                    sub=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --subject=?*)
+                sub=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --subject=)
+                echo 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
+                exit 1
+                ;;
+                
+            ##parse predicate
+            -p|--predicate)
+                if [ "$#" -gt 1 ]; then
+                    pred=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --predicate=?*)
+                pred=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --predicate=)  
+                echo 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
+                exit 1
+                ;;
+                
+             ##parse object
+            -o|--object)
+                if [ "$#" -gt 1 ]; then
+                    obj=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --object=?*)
+                obj=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --object=) 
+                echo 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
+                exit 1
+                ;;
+                
+                
+           
+            -g|--showGraph)
+                showGraph=true;
+                ;;
+            --)              # End of all options.
+                shift
+                break
+                ;;
+            -?*)
+                printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+                ;;
+            *)               # Default case: If no more options then break out of the loop.
+                break
+        esac
+    
+        shift
+    done
+elif [[ "$mode" == "documents" ]]; then
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+            -h|-\?|--help)
+                show_documents_help
+                exit
+                ;;
+            
+            ##parse limit size ('buffer')
+            -b|--buffer)
+                if [ "$#" -gt 1 ]; then
+                    limit=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --buffer=?*)
+                limit=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --buffer=)    
+                echo 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
+                exit 1
+                ;;
+                
+            ##parse min triples)
+            --minTriples)
+                if [ "$#" -gt 1 ]; then
+                    minTriples=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --minTriples=?*)
+                minTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --minTriples=)  
+                echo 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
+                exit 1
+                ;;
+            ##parse max triples)
+            --maxTriples)
+                if [ "$#" -gt 1 ]; then
+                    maxTriples=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --maxTriples=?*)
+                maxTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --maxTriples=)   
+                echo 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
+                exit 1
+                ;;
+                
+             
+            -d|--downloadUri)
+                resource=false;
+                ;;
+            -r|--resourceUri)
+                download=false;
+                ;;
+            --)              # End of all options.
+                shift
+                break
+                ;;
+            -?*)
+                printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+                ;;
+            *)               # Default case: If no more options then break out of the loop.
+                break
+        esac
+    
+        shift
+    done
+elif [[ "$mode" == "meta" ]]; then
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+            -h|-\?|--help)  
+                show_meta_help
+                exit
+                ;;
+            --)              # End of all options.
+                shift
+                break
+                ;;
+            -?*)
+                printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+                ;;
+            *)               # Default case: If no more options then break out of the loop.
+                break
+        esac
+    
+        shift
+    done
+fi
+
+
+
+
+
+
+
+#top25 of prefix.cc prefixes
+declare -A prefixes=(["yago"]="http://yago-knowledge.org/resource/" ["rdf"]="http://www.w3.org/1999/02/22-rdf-syntax-ns#" ["foaf"]="http://xmlns.com/foaf/0.1/" ["dbp"]="http://dbpedia.org/property/" ["dc"]="http://purl.org/dc/elements/1.1/" ["owl"]="http://www.w3.org/2002/07/owl#" ["rdfs"]="http://www.w3.org/2000/01/rdf-schema#" ["dbo"]="http://dbpedia.org/ontology/" ["ont"]="http://purl.org/net/ns/ontology-annot#" ["onto"]="http://www.ontotext.com/" ["skos"]="http://www.w3.org/2004/02/skos/core#" ["geo"]="http://www.w3.org/2003/01/geo/wgs84_pos#" ["rss"]="http://purl.org/rss/1.0/" ["gldp"]="http://www.w3.org/ns/people#" ["sioc"]="http://rdfs.org/sioc/ns#" ["fb"]="http://rdf.freebase.com/ns/" ["sc"]="http://purl.org/science/owl/sciencecommons/" ["geonames"]="http://www.geonames.org/ontology#" ["xsd"]="http://www.w3.org/2001/XMLSchema#" ["gr"]="http://purl.org/goodrelations/v1#" ["dcterms"]="http://purl.org/dc/terms/" ["dct"]="http://purl.org/dc/terms/" ["org"]="http://www.w3.org/ns/org#" ["dbpedia"]="http://dbpedia.org/resource/" ["qb"]="http://purl.org/linked-data/cube#" ["dbpprop"]="http://dbpedia.org/property/" ["void"]="http://rdfs.org/ns/void#")
+if [ -n "$sub" ]; then
+    ns=`echo "$sub"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$sub"| cut -d':' -f 2`
+        sub="${prefixes["$ns"]}$localN"
+    fi
+fi
+if [ -n "$pred" ]; then
+    ns=`echo "$pred"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$pred"| cut -d':' -f 2`
+        pred="${prefixes["$ns"]}$localN"
+    fi
+fi
+if [ -n "$obj" ]; then
+    ns=`echo "$obj"| cut -d':' -f 1`
+    if [ -n "${prefixes["$ns"]}" ]; then
+        localN=`echo "$obj"| cut -d':' -f 2`
+        obj="${prefixes["$ns"]}$localN"
+    fi
+fi
+
+
+fetchStatementsForDoc() {
+    #start with a sanity check (simple non-empty check)
+    if [ -z "$1" ]; then return; fi
+    
+    #might need to use this var more often, so generate it once for this particular doc
+    quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
+    
+    #extract md5 from resource url
+    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/;tx;d;:x' <<< "$1")
+    
+    if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi 
+    url="$ldfApi/$md5"
+    
+    #while we have something to send request to, i.e. pagination has not finished yet for this document
+    while [ -n "$url" ]; do
+        response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
+        url=
+        while read quad; do
+            #skip blank lines
+            if [ -z "$quad" ]; then continue; fi
+            if echo $quad | grep -qE '#metadata>\s*\.'; then
+                if echo $quad | grep -q 'nextPage'; then
+                    url=$(echo "$quad" | sed 's/.*nextPage>\s*<\(.*\)>\s*<.*/\1/')
+                fi
+            else 
+                if $showGraph ; then
+                    echo "$quad" | sed "s/\(.*\)\.$/\1 <$quadReplace>./"
+                else
+                    echo $quad;
+                fi
+            fi
+            
+        done <<< "$response"
+    done;
+}
+
+fetchDocs() {
+    prefixes="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> PREFIX llo: <http://lodlaundromat.org/ontology/> PREFIX ll: <http://lodlaundromat.org/resource/>"
+    offset=10
+    docTpfs="?doc llo:triples ?triples ; llo:md5 ?md5 ."
+    filterMinTriples="FILTER(?triples >= $minTriples) "
+    filterMaxTriples=""
+    if [ -n "$maxTriples" ]; then
+        filterMaxTriples="FILTER(?triples <= $maxTriples) " 
+    fi
+    
+    #Start fetching docs
+    while true; do
+            limitOffset="LIMIT $limit OFFSET $offset";
+            
+            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filterMinTriples $filterMaxTriples} $limitOffset"
+            #nicest approach would be to stream through results. For now, just take this quick approach
+            result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
+            
+            
+            while read -r line; do
+                if [ -z "$line" ]; then
+                    #just whitespace string
+                    continue
+                fi 
+                println=;
+                #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
+                if $download ; then 
+                    md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
+                    println="$downloadUrl/$md5"
+                fi
+                if $resource ; then
+                    r=$(echo "$line" | sed 's/^\"\([^\"]*\)\".*/\1/')
+                    if [ -z $println ]; then
+                        println="$r"
+                    else
+                        println="$println $r"
+                    fi
+                    
+                fi
+                echo $println;
+            done <<< "$result"
+            
+            
+            
+            
+            
+            if [ -z "$result" ]; then
+                #no results left, we are done!
+                exit 0;
+            fi
+            
+            
+            #up offset for next query
+            offset=`expr $offset + $limit`
+    done
+}
+
+
+fetchMeta() {
+    #start with a sanity check (simple non-empty check)
+    if [ -z "$1" ]; then return; fi
+
+    mainTPatterns="<$1> llm:metrics ?metricDoc ; ?pred ?obj ."
+    optionalTPattern="?obj ?pred2 ?obj2 ."
+    query="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> CONSTRUCT { $mainTPatterns $optionalTPattern } WHERE { $mainTPatterns OPTIONAL{$optionalTPattern}}"
+    response=`curl -Gs $endpoint --data-urlencode "query=$query" -H "Accept: text/plain"`
+    #the response may return '# Empty NT'
+    echo "$response" | head -n 1 | grep "Empty NT" > /dev/null && return;
+    echo $response;
+}
+
+
+##
+## This is where we actually start doing stuff
+##
+if [[ "$mode" == "statements" ]]; then
+    runForDocs=true
+    if [ "$#" -gt 0 ]; then
+        #there are graphs passed as arguments to the script
+        for res in "$@"; do fetchStatementsForDoc "$res";done
+        runForDocs=false
+    fi
+    if [ ! -t 0 ]; then
+        #something is piped to this program
+       while read res ; do fetchStatementsForDoc "$res" ; done
+       runForDocs=false
+    fi
+    if $runForDocs ; then
+        #no arguments and nothing piped. Just use the whole lod cloud
+        download=false
+        resource=true 
+        while read res ; do fetchStatementsForDoc "$res" ; done < <( fetchDocs )
+    fi
+elif [[ "$mode" == "documents" ]]; then
+    fetchDocs
+elif [[ "$mode" == "meta" ]]; then
+    showHelp=true
+    if [ "$#" -gt 0 ]; then
+        #there are graphs passed as arguments to the script
+        for res in "$@"; do fetchMeta "$res";done
+        showHelp=false
+    fi
+    if [ ! -t 0 ]; then
+        #something is piped to this program
+       while read res ; do fetchMeta "$res" ; done
+       showHelp=false
+    fi
+    if $showHelp ; then
+        show_meta_help
+    fi
+fi
+
+
+
+
+
