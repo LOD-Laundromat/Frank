@@ -502,16 +502,17 @@ fetchDocs() {
         filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree <= $maxAvgOutDegree) "
     fi
     if [ -n "$minAvgDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgdegree. FILTER(?avgDegree >= $minAvgDegree) "
+        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree >= $minAvgDegree) "
     fi
     if [ -n "$maxAvgDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgdegree. FILTER(?avgDegree <= $maxAvgDegree) "
+        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
     #Start fetching docs
     while true; do
             limitOffset="LIMIT $limit OFFSET $offset";
             
             query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters} $limitOffset"
+
             #nicest approach would be to stream through results. For now, just take this quick approach
             result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
             
