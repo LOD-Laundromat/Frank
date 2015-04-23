@@ -71,6 +71,10 @@ Fetch LOD Laundromat document references
         Only fetch documents with an average in degree of at least this amount
     --maxAvgInDegree <maxAvgInDegree>
         Only fetch documents with an average in degree of maximum this amount
+    --minAvgDegree <minAvgDegree>
+        Only fetch documents with an average degree of at least this amount
+    --maxAvgDegree <maxAvgDegree>
+        Only fetch documents with an average degree of maximum this amount
     -d
     --downloadUri
         Only print the download URI
@@ -107,6 +111,8 @@ minAvgOutDegree=
 maxAvgOutDegree=
 minAvgInDegree=
 maxAvgInDegree=
+minAvgDegree=
+maxAvgDegree=
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
@@ -329,6 +335,42 @@ elif [[ "$mode" == "documents" ]]; then
                 echo 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
                 exit 1
                 ;;
+            ##parse min avg degree)
+            --minAvgDegree)
+                if [ "$#" -gt 1 ]; then
+                    minAvgDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --minAvgDegree=?*)
+                minAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --minAvgDegree=)  
+                echo 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
+                exit 1
+                ;;
+            ##parse max avg degree)
+            --maxAvgDegree)
+                if [ "$#" -gt 1 ]; then
+                    maxAvgDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --maxAvgDegree=?*)
+                maxAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --maxAvgDegree=)   
+                echo 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
+                exit 1
+                ;;
                 
              
             -d|--downloadUri)
@@ -458,6 +500,12 @@ fetchDocs() {
     fi
     if [ -n "$maxAvgoutDegree" ]; then
         filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree <= $maxAvgOutDegree) "
+    fi
+    if [ -n "$minAvgDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgdegree. FILTER(?avgDegree >= $minAvgDegree) "
+    fi
+    if [ -n "$maxAvgDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgdegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
     #Start fetching docs
     while true; do
