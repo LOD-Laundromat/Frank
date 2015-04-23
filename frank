@@ -63,6 +63,14 @@ Fetch LOD Laundromat document references
         Only fetch documents with at least this amount of triples
     --maxTriples <maxTriples>
         Only fetch documents with at most this amount of triples
+    --minAvgOutDegree <minAvgOutDegree>
+        Only fetch documents with an average out degree of at least this amount
+    --maxAvgOutDegree <maxAvgOutDegree>
+        Only fetch documents with an average out degree of maximum this amount
+    --minAvgInDegree <minAvgInDegree>
+        Only fetch documents with an average in degree of at least this amount
+    --maxAvgInDegree <maxAvgInDegree>
+        Only fetch documents with an average in degree of maximum this amount
     -d
     --downloadUri
         Only print the download URI
@@ -95,7 +103,10 @@ download=true
 resource=true 
 minTriples=1;
 maxTriples=
-
+minAvgOutDegree=
+maxAvgOutDegree=
+minAvgInDegree=
+maxAvgInDegree=
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
@@ -246,6 +257,78 @@ elif [[ "$mode" == "documents" ]]; then
                 echo 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
                 exit 1
                 ;;
+            ##parse min avg out degree)
+            --minAvgOutDegree)
+                if [ "$#" -gt 1 ]; then
+                    minAvgOutDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --minAvgOutDegree=?*)
+                minAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --minAvgOutDegree=)  
+                echo 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
+                exit 1
+                ;;
+            ##parse max avg out degree)
+            --maxAvgOutDegree)
+                if [ "$#" -gt 1 ]; then
+                    maxAvgOutDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --maxAvgOutDegree=?*)
+                maxAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --maxAvgOutDegree=)   
+                echo 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
+                exit 1
+                ;;
+            ##parse min avg in degree)
+            --minAvgInDegree)
+                if [ "$#" -gt 1 ]; then
+                    minAvgInDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --minAvgInDegree=?*)
+                minAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --minAvgInDegree=)  
+                echo 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
+                exit 1
+                ;;
+            ##parse max avg in degree)
+            --maxAvgInDegree)
+                if [ "$#" -gt 1 ]; then
+                    maxAvgInDegree=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --maxAvgInDegree=?*)
+                maxAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --maxAvgInDegree=)   
+                echo 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
+                exit 1
+                ;;
                 
              
             -d|--downloadUri)
@@ -360,17 +443,27 @@ fetchDocs() {
     prefixes="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> PREFIX llo: <http://lodlaundromat.org/ontology/> PREFIX ll: <http://lodlaundromat.org/resource/>"
     offset=10
     docTpfs="?doc llo:triples ?triples ; llo:md5 ?md5 ."
-    filterMinTriples="FILTER(?triples >= $minTriples) "
-    filterMaxTriples=""
+    filters="FILTER(?triples >= $minTriples) "
     if [ -n "$maxTriples" ]; then
-        filterMaxTriples="FILTER(?triples <= $maxTriples) " 
+        filters="$filters FILTER(?triples <= $maxTriples) " 
     fi
-    
+    if [ -n "$minAvgInDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree > $minAvgInDegree) "
+    fi
+    if [ -n "$maxAvgInDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree < $maxAvgInDegree) "
+    fi
+    if [ -n "$minAvgOutDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree > $minAvgOutDegree) "
+    fi
+    if [ -n "$maxAvgoutDegree" ]; then
+        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree < $maxAvgOutDegree) "
+    fi
     #Start fetching docs
     while true; do
             limitOffset="LIMIT $limit OFFSET $offset";
             
-            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filterMinTriples $filterMaxTriples} $limitOffset"
+            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters} $limitOffset"
             #nicest approach would be to stream through results. For now, just take this quick approach
             result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
             
