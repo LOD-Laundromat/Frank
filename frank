@@ -448,16 +448,16 @@ fetchDocs() {
         filters="$filters FILTER(?triples <= $maxTriples) " 
     fi
     if [ -n "$minAvgInDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree > $minAvgInDegree) "
+        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree >= $minAvgInDegree) "
     fi
     if [ -n "$maxAvgInDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree < $maxAvgInDegree) "
+        filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree <= $maxAvgInDegree) "
     fi
     if [ -n "$minAvgOutDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree > $minAvgOutDegree) "
+        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree >= $minAvgOutDegree) "
     fi
     if [ -n "$maxAvgoutDegree" ]; then
-        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree < $maxAvgOutDegree) "
+        filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree <= $maxAvgOutDegree) "
     fi
     #Start fetching docs
     while true; do
