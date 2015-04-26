@@ -456,29 +456,35 @@ fetchStatementsForDoc() {
     md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/;tx;d;:x' <<< "$1")
     
     if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi 
-    url="$ldfApi/$md5"
     
-    #while we have something to send request to, i.e. pagination has not finished yet for this document
-    while [ -n "$url" ]; do
-        response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
-        url=
-        while read quad; do
-            #skip blank lines
-            if [ -z "$quad" ]; then continue; fi
-            if echo $quad | grep -qE '#metadata>\s*\.'; then
-                if echo $quad | grep -q 'nextPage'; then
-                    url=$(echo "$quad" | sed 's/.*nextPage>\s*<\(.*\)>\s*<.*/\1/')
+    if [ -z "$sub" ] && [ -z "$pred" ] && [ -z "$obj" ] && ! $showGraph; then
+	   #just fetch gzip file. don't need to filter
+	   curl -Gs $downloadUrl/$md5 | zcat;
+    else
+    	url="$ldfApi/$md5"
+    
+	    #while we have something to send request to, i.e. pagination has not finished yet for this document
+        while [ -n "$url" ]; do
+            response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
+            url=
+            while read quad; do
+                #skip blank lines
+                if [ -z "$quad" ]; then continue; fi
+                if echo $quad | grep -qE '#metadata>\s*\.'; then
+                    if echo $quad | grep -q 'nextPage'; then
+                        url=$(echo "$quad" | sed 's/.*nextPage>\s*<\(.*\)>\s*<.*/\1/')
+                    fi
+                else 
+                    if $showGraph ; then
+                        echo "$quad" | sed "s/\(.*\)\.$/\1 <$quadReplace>./"
+                    else
+                        echo $quad;
+                    fi
                 fi
-            else 
-                if $showGraph ; then
-                    echo "$quad" | sed "s/\(.*\)\.$/\1 <$quadReplace>./"
-                else
-                    echo $quad;
-                fi
-            fi
-            
-        done <<< "$response"
-    done;
+                
+            done <<< "$response"
+        done;
+    fi;
 }
 
 fetchDocs() {
