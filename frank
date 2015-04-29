@@ -75,6 +75,18 @@ Fetch LOD Laundromat document references
         Only fetch documents with an average degree of at least this amount
     --maxAvgDegree <maxAvgDegree>
         Only fetch documents with an average degree of maximum this amount
+    --sparql <sparql-bgp>
+        Use your own SPARQL bgp to filter the results. Use ?doc to refer 
+        to the current document. For more information on available properties,
+        check schema, or any resource 
+        (e.g. http://lodlaundromat.org/resource/e439f40f187906eb8e6223d57a77d24d)
+        Example: 
+            {?doc llm:metrics/llm:IRILength/llm:std ?std .
+            FILTER(?std >  50)}
+        Available prefixes:
+            ll: <http://lodlaundromat.org/resource/>
+            llo: <http://lodlaundromat.org/ontology/>
+            llm: <http://lodlaundromat.org/metrics/ontology/
     -d
     --downloadUri
         Only print the download URI
@@ -113,6 +125,7 @@ minAvgInDegree=
 maxAvgInDegree=
 minAvgDegree=
 maxAvgDegree=
+bgp=""
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
@@ -371,6 +384,24 @@ elif [[ "$mode" == "documents" ]]; then
                 echo 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
                 exit 1
                 ;;
+            ##parse sparql param)
+            --sparql)
+                if [ "$#" -gt 1 ]; then
+                    bgp=$2
+                    shift 2
+                    continue
+                else
+                    echo 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --sparql=?*)
+                bgp=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --sparql=)   
+                echo 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
+                exit 1
+                ;;
                 
              
             -d|--downloadUri)
@@ -517,8 +548,8 @@ fetchDocs() {
     while true; do
             limitOffset="LIMIT $limit OFFSET $offset";
             
-            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters} $limitOffset"
-
+            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp} $limitOffset"
+            
             #nicest approach would be to stream through results. For now, just take this quick approach
             result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
             
