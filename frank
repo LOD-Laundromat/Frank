@@ -491,7 +491,7 @@ fetchStatementsForDoc() {
     quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
     
     #extract md5 from resource url
-    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/;tx;d;:x' <<< "$1")
+    md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
     
     if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi 
     
