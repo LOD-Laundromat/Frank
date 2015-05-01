@@ -9,6 +9,7 @@ command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 
 ldfApi="http://ldf.lodlaundromat.org"
 endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
+r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ##
 ## All documentation
 ##
@@ -487,8 +488,7 @@ fetchStatementsForDoc() {
     #start with a sanity check (simple non-empty check)
     if [ -z "$1" ]; then return; fi
     
-    #might need to use this var more often, so generate it once for this particular doc
-    quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
+    
     
     #extract md5 from resource url
     md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
@@ -499,6 +499,20 @@ fetchStatementsForDoc() {
 	   #just fetch gzip file. don't need to filter
 	   curl -Gs $downloadUrl/$md5 | zcat;
     else
+        
+        if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
+            #Ah, in this case we've already looked up which documents to process. Check whether this md5 is one of them..
+            #if [[ "$filterForDocs" != *"$md5"* ]]; then
+            if ! grep -q "$md5" <<< "$filterForDocs"; then
+                echo "oops! skipping";
+                return;
+            fi
+                
+        fi
+        
+        #might need to use this var more often, so generate it once for this particular doc
+        quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
+        
     	url="$ldfApi/$md5"
     
 	    #while we have something to send request to, i.e. pagination has not finished yet for this document
@@ -614,10 +628,44 @@ fetchMeta() {
 }
 
 
+
+
+filterForDocs=
+fetchDocsForResources() {
+    #if sub, pred or obj filter is set, check whether we can prune docs using our index
+    if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
+    
+        if [ -n "$sub" ]; then
+            filterForDocs=`curl -Gs $r2dIndex --data-urlencode "key=$sub" | tr " " "\n"`
+        fi
+        
+        if [ -n "$pred" ]; then
+            docs=`curl -Gs $r2dIndex --data-urlencode "key=$pred" | tr " " "\n"`
+            #if we've already got a doc list, then merge both
+            if [ -n "$filterForDocs" ]; then
+                filterForDocs=`comm -12  <(echo "$filterForDocs") <(echo "$docs");`
+            else
+                filterForDocs="$docs"
+            fi
+        fi
+        
+        if [ -n "$obj" ]; then
+            docs=`curl -Gs $r2dIndex --data-urlencode "key=$obj" | tr " " "\n"`
+            #if we've already got a doc list, then merge both
+            if [ -n "$filterForDocs" ]; then
+               filterForDocs=`comm -12  <(echo "$filterForDocs") <(echo "$docs")`
+            else
+                filterForDocs="$docs"
+            fi
+            
+        fi
+    fi
+}
 ##
 ## This is where we actually start doing stuff
 ##
 if [[ "$mode" == "statements" ]]; then
+    fetchDocsForResources;
     runForDocs=true
     if [ "$#" -gt 0 ]; then
         #there are graphs passed as arguments to the script
@@ -625,15 +673,26 @@ if [[ "$mode" == "statements" ]]; then
         runForDocs=false
     fi
     if [ ! -t 0 ]; then
-        #something is piped to this program
+       #something is piped to this program
        while read res ; do fetchStatementsForDoc "$res" ; done
        runForDocs=false
     fi
     if $runForDocs ; then
-        #no arguments and nothing piped. Just use the whole lod cloud
-        download=false
-        resource=true 
-        while read res ; do fetchStatementsForDoc "$res" ; done < <( fetchDocs )
+        #no arguments and nothing piped.
+        
+        if [ -n "$filterForDocs" ]; then
+            #we're filtering the results (by sub/pred/obj). I.e., we know where we need to be!
+            #use this list
+            while read -r md5; do
+                fetchStatementsForDoc "http://lodlaundromat.org/resource/$md5"
+            done <<< "$filterForDocs"
+        else
+            #download=false
+            #resource=true 
+        
+            #Just use the whole lod cloud
+            while read res ; do fetchStatementsForDoc "$res" ; done < <( fetchDocs )
+        fi
     fi
 elif [[ "$mode" == "documents" ]]; then
     fetchDocs
