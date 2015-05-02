@@ -10,11 +10,19 @@ ldfApi="http://ldf.lodlaundromat.org"
 endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
+
+echoerr() { echo "$@" 1>&2; }
+caterr() { 
+while IFS= read  line; do
+    echo "$line" 1>&2;
+done
+ }
+
 ##
 ## All documentation
 ##
 show_main_help() {
-cat << EOF
+caterr << EOF
 Usage: ${0##*/} [-h] <command> [<args>]
 
 The three main frank commands are:
@@ -27,7 +35,7 @@ EOF
 
 
 show_statements_help() {
-cat << EOF
+caterr << EOF
 usage: ${0##*/} $mode [<args>] [<documentUri>]
 
 Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
@@ -54,7 +62,7 @@ EOF
 }
 
 show_documents_help() {
-cat << EOF
+caterr << EOF
 Usage: ${0##*/} $mode [<args>]
 
 Fetch LOD Laundromat document references
@@ -102,7 +110,7 @@ EOF
 }
 
 show_meta_help() {
-cat << EOF
+caterr << EOF
 Usage: ${0##*/} $mode [<args>] <documentUri>...
 
 Fetch LOD Laundromat meta-data for each LOD Laundromat document references (<documentUri>) passed as arguments.
@@ -150,7 +158,7 @@ if [[ "$mode" == "statements" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -158,7 +166,7 @@ if [[ "$mode" == "statements" ]]; then
                 sub=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --subject=)
-                echo 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
                 exit 1
                 ;;
                 
@@ -169,7 +177,7 @@ if [[ "$mode" == "statements" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -177,7 +185,7 @@ if [[ "$mode" == "statements" ]]; then
                 pred=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --predicate=)  
-                echo 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
                 exit 1
                 ;;
                 
@@ -188,7 +196,7 @@ if [[ "$mode" == "statements" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -196,7 +204,7 @@ if [[ "$mode" == "statements" ]]; then
                 obj=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --object=) 
-                echo 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
                 exit 1
                 ;;
                 
@@ -233,7 +241,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -241,7 +249,7 @@ elif [[ "$mode" == "documents" ]]; then
                 limit=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --buffer=)    
-                echo 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
                 exit 1
                 ;;
                 
@@ -252,7 +260,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -260,7 +268,7 @@ elif [[ "$mode" == "documents" ]]; then
                 minTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --minTriples=)  
-                echo 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
                 exit 1
                 ;;
             ##parse max triples)
@@ -270,7 +278,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -278,7 +286,7 @@ elif [[ "$mode" == "documents" ]]; then
                 maxTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --maxTriples=)   
-                echo 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
                 exit 1
                 ;;
             ##parse min avg out degree)
@@ -288,7 +296,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -296,7 +304,7 @@ elif [[ "$mode" == "documents" ]]; then
                 minAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --minAvgOutDegree=)  
-                echo 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse max avg out degree)
@@ -306,7 +314,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -314,7 +322,7 @@ elif [[ "$mode" == "documents" ]]; then
                 maxAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --maxAvgOutDegree=)   
-                echo 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse min avg in degree)
@@ -324,7 +332,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -332,7 +340,7 @@ elif [[ "$mode" == "documents" ]]; then
                 minAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --minAvgInDegree=)  
-                echo 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse max avg in degree)
@@ -342,7 +350,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -350,7 +358,7 @@ elif [[ "$mode" == "documents" ]]; then
                 maxAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --maxAvgInDegree=)   
-                echo 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse min avg degree)
@@ -360,7 +368,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -368,7 +376,7 @@ elif [[ "$mode" == "documents" ]]; then
                 minAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --minAvgDegree=)  
-                echo 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse max avg degree)
@@ -378,7 +386,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -386,7 +394,7 @@ elif [[ "$mode" == "documents" ]]; then
                 maxAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --maxAvgDegree=)   
-                echo 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
                 exit 1
                 ;;
             ##parse sparql param)
@@ -396,7 +404,7 @@ elif [[ "$mode" == "documents" ]]; then
                     shift 2
                     continue
                 else
-                    echo 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
+                    echoerr 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
                     exit 1
                 fi
                 ;;
@@ -404,7 +412,7 @@ elif [[ "$mode" == "documents" ]]; then
                 bgp=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
             --sparql=)   
-                echo 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
+                echoerr 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
                 exit 1
                 ;;
                 
@@ -483,6 +491,30 @@ if $associativeSupported; then
     fi
 fi
 
+#check whether we've found the full URI for any prefixed sub/pred/obj
+prefixRegex='^\w\+:\w\+$'
+if [ -n "$sub" ] && grep -q "$prefixRegex" <<< $sub; then
+    if ! $associativeSupported; then
+        echoerr "Prefixes are only supported by bash version 4. Your version does not meet these requirements: $BASH_VERSION"
+    else
+        echoerr "Could not find prefixed $sub. Use the full URI instead";
+    fi
+fi
+if [ -n "$pred" ] && grep -q "$prefixRegex" <<< $pred; then
+    if ! $associativeSupported; then
+        echoerr "Prefixes are only supported by bash version 4. Your version does not meet these requirements: $BASH_VERSION"
+    else
+        echoerr "Could not find prefixed $pred. Use the full URI instead";
+    fi
+fi
+if [ -n "$obj" ] && grep -q "$prefixRegex" <<< $obj; then
+    if ! $associativeSupported; then
+        echoerr "Prefixes are only supported by bash version 4. Your version does not meet these requirements: $BASH_VERSION"
+    else
+        echoerr "Could not find prefixed $obj. Use the full URI instead";
+    fi
+fi
+
 
 fetchStatementsForDoc() {
     #start with a sanity check (simple non-empty check)
@@ -504,7 +536,6 @@ fetchStatementsForDoc() {
             #Ah, in this case we've already looked up which documents to process. Check whether this md5 is one of them..
             #if [[ "$filterForDocs" != *"$md5"* ]]; then
             if ! grep -q "$md5" <<< "$filterForDocs"; then
-                echo "oops! skipping";
                 return;
             fi
                 
