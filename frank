@@ -625,7 +625,7 @@ fetchDocs() {
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
     
-    if [ $useSparql || -z $namespaceDocs ]; then
+    if [ $useSparql ] || [ -z $namespaceDocs ]; then
     
     
     
@@ -649,8 +649,7 @@ fetchDocs() {
                     md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
                     
                     #we're filtering by namespace. If md5 does not occur in a dataset containing this ns, then skip it
-                    if [ -n "$namespaces" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
-                    
+                    [ -n "$namespaces" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
                     
                     #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
                     if $download ; then 
@@ -667,11 +666,6 @@ fetchDocs() {
                     fi
                     echo $println;
                 done <<< "$result"
-                
-                
-                
-                
-                
                 if [ -z "$result" ]; then
                     #no results left, we are done!
                     exit 0;
