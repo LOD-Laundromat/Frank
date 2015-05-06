@@ -11,7 +11,8 @@ endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
-sparqlMaxDocsAsValues=10000 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
+#limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
+sparqlMaxDocsAsValues=50000 
 echoerr() { echo "$@" 1>&2; }
 caterr() { 
 while IFS= read  line; do
@@ -131,7 +132,7 @@ obj=
 showGraph=false
 
 #documents options
-limit=10
+limit=50
 download=true
 resource=true 
 minTriples=1;
@@ -607,7 +608,7 @@ fetchStatementsForDoc() {
 fetchDocs() {
     useSparql=false;
     prefixes="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> PREFIX llo: <http://lodlaundromat.org/ontology/> PREFIX ll: <http://lodlaundromat.org/resource/>"
-    offset=10
+    offset=0
     docTpfs="?doc llo:triples ?triples ; llo:md5 ?md5 ."
     filters="FILTER(?triples >= $minTriples) "
     if [ -n "$maxTriples" ]; then
@@ -641,16 +642,19 @@ fetchDocs() {
     
     if [ $useSparql ]; then
         values=
-        filteredDocsInSparql=false;
         if [ -n "$namespaceDocs" ]; then
-            filteredDocsInSparql=true;
-            values="VALUES (?doc) {"
-            while read -r md5; do
-                values="$values (ll:$md5)"
-            done <<< "$namespaceDocs"
-            values="$values }";
+            #first check whether we really want to include the ns docs
+            #having too many might make this sparql query waaaaay too long (~25MB)
+            docsLength=${#namespaceDocs}
+            numDocs=$(($docsLength + 1 / 33))
+            if [ "$numDocs" -lt  "$sparqlMaxDocsAsValues" ]; then
+                values="VALUES (?doc) {"
+                while read -r md5; do
+                    values="$values (ll:$md5)"
+                done <<< "$namespaceDocs"
+                values="$values }";
+            fi
         fi
-        echo "$values"
     
     
         #Start fetching docs
@@ -658,10 +662,9 @@ fetchDocs() {
                 limitOffset="LIMIT $limit OFFSET $offset";
                 
                 query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp $values} $limitOffset"
-                
+
                 #nicest approach would be to stream through results. For now, just take this quick approach
                 result=$(curl -X POST -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
-                
                 
                 while read -r line; do
                     if [ -z "$line" ]; then
@@ -672,7 +675,7 @@ fetchDocs() {
                     md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
                     
                     #we're filtering by namespace. If md5 does not occur in a dataset containing this ns, then skip it
-                    [ -n "$namespaces" ] && ! filteredDocsInSparql && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
+                    [ -n "$namespaces" ] && [ -z "$values" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
                     
                     #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
                     if $download ; then 
@@ -771,14 +774,12 @@ fetchNamespaces() {
     if [ -n "$namespaces" ]; then
         while read -r namespace; do
             curlCmd="curl --fail -Gs $ns2dIndex --data-urlencode \"key=$namespace\""
-            docs=`$curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
-            if $verbose && [ $curlStatus -gt 0 ]; then
-                echo "Failed fetching namespaces from index. Command: "
-                echo "$curlCmd";
+            if [ $curlStatus -gt 0 ]; then
+                echoerr "Failed fetching namespaces from index. Command: "
+                echoerr "$curlCmd";
             fi
-            
-            exit;
             #if we've already got a doc list, then merge both
             if [ -n "$namespaceDocs" ]; then
                namespaceDocs=`comm -12  <(echo "$namespaceDocs") <(echo "$docs")`
