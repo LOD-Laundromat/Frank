@@ -11,7 +11,7 @@ endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
-
+sparqlMaxDocsAsValues=10000 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
 echoerr() { echo "$@" 1>&2; }
 caterr() { 
 while IFS= read  line; do
@@ -144,6 +144,7 @@ minAvgDegree=
 maxAvgDegree=
 bgp=""
 namespaces=
+verbose=false;
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
@@ -155,7 +156,11 @@ if [[ "$mode" == "statements" ]]; then
                 show_statements_help
                 exit
                 ;;
-            
+            -v|--verbose)
+                verbose=true;
+                shift;
+                continue;
+                ;;
             ##parse subject
             -s|--subject)
                 if [ "$#" -gt 1 ]; then
@@ -238,7 +243,11 @@ elif [[ "$mode" == "documents" ]]; then
                 show_documents_help
                 exit
                 ;;
-            
+            -v|--verbose)
+                verbose=true;
+                shift;
+                continue;
+                ;;
             ##parse limit size ('buffer')
             -b|--buffer)
                 if [ "$#" -gt 1 ]; then
@@ -467,6 +476,11 @@ elif [[ "$mode" == "meta" ]]; then
                 show_meta_help
                 exit
                 ;;
+            -v|--verbose)
+                verbose=true;
+                shift;
+                continue;
+                ;;
             --)              # End of all options.
                 shift
                 break
@@ -625,19 +639,28 @@ fetchDocs() {
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
     
-    if [ $useSparql ] || [ -z $namespaceDocs ]; then
-    
-    
+    if [ $useSparql ]; then
+        values=
+        filteredDocsInSparql=false;
+        if [ -n "$namespaceDocs" ]; then
+            filteredDocsInSparql=true;
+            values="VALUES (?doc) {"
+            while read -r md5; do
+                values="$values (ll:$md5)"
+            done <<< "$namespaceDocs"
+            values="$values }";
+        fi
+        echo "$values"
     
     
         #Start fetching docs
         while true; do
                 limitOffset="LIMIT $limit OFFSET $offset";
                 
-                query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp} $limitOffset"
+                query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp $values} $limitOffset"
                 
                 #nicest approach would be to stream through results. For now, just take this quick approach
-                result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
+                result=$(curl -X POST -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
                 
                 
                 while read -r line; do
@@ -649,7 +672,7 @@ fetchDocs() {
                     md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
                     
                     #we're filtering by namespace. If md5 does not occur in a dataset containing this ns, then skip it
-                    [ -n "$namespaces" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
+                    [ -n "$namespaces" ] && ! filteredDocsInSparql && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
                     
                     #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
                     if $download ; then 
@@ -747,8 +770,15 @@ fetchNamespaces() {
     #if sub, pred or obj filter is set, check whether we can prune docs using our index
     if [ -n "$namespaces" ]; then
         while read -r namespace; do
-            echo "$namespace";
-            docs=`curl -Gs $ns2dIndex --data-urlencode "key=$namespace" | tr " " "\n"`
+            curlCmd="curl --fail -Gs $ns2dIndex --data-urlencode \"key=$namespace\""
+            docs=`$curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlStatus=$?;
+            if $verbose && [ $curlStatus -gt 0 ]; then
+                echo "Failed fetching namespaces from index. Command: "
+                echo "$curlCmd";
+            fi
+            
+            exit;
             #if we've already got a doc list, then merge both
             if [ -n "$namespaceDocs" ]; then
                namespaceDocs=`comm -12  <(echo "$namespaceDocs") <(echo "$docs")`
