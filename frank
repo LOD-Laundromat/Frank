@@ -10,6 +10,7 @@ ldfApi="http://ldf.lodlaundromat.org"
 endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
+ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
 
 echoerr() { echo "$@" 1>&2; }
 caterr() { 
@@ -88,6 +89,9 @@ Fetch LOD Laundromat document references
         Only fetch documents with an average degree of at least this amount
     --maxAvgDegree <maxAvgDegree>
         Only fetch documents with an average degree of maximum this amount
+    --namespace <namespace>
+        Filter document for this namespace. Provide this flag several times to filter 
+        for multiple namespaces ('OR' operation)
     --sparql <sparql-bgp>
         Use your own SPARQL bgp to filter the results. Use ?doc to refer 
         to the current document. For more information on available properties,
@@ -139,6 +143,7 @@ maxAvgInDegree=
 minAvgDegree=
 maxAvgDegree=
 bgp=""
+namespaces=
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
@@ -416,6 +421,25 @@ elif [[ "$mode" == "documents" ]]; then
                 exit 1
                 ;;
                 
+            ##parse namespace param)
+            --namespace)
+                if [ "$#" -gt 1 ]; then
+                    namespaces="$namespace $2"
+                    shift 2
+                    continue
+                else
+                    echoerr 'ERROR: Must specify a non-empty "--namespace <namespace>" argument.' >&2
+                    exit 1
+                fi
+                ;;
+            --namespace=?*)
+                namespaces=${1#*=} # Delete everything up to "=" and assign the remainder.
+                ;;
+            --namespace=)   
+                echoerr 'ERROR: Must specify a non-empty "--namespace <namespace>" argument.' >&2
+                exit 1
+                ;;
+                
              
             -d|--downloadUri)
                 resource=false;
@@ -457,9 +481,6 @@ elif [[ "$mode" == "meta" ]]; then
         shift
     done
 fi
-
-
-
 
 
 
@@ -534,7 +555,6 @@ fetchStatementsForDoc() {
         
         if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
             #Ah, in this case we've already looked up which documents to process. Check whether this md5 is one of them..
-            #if [[ "$filterForDocs" != *"$md5"* ]]; then
             if ! grep -q "$md5" <<< "$filterForDocs"; then
                 return;
             fi
@@ -571,77 +591,112 @@ fetchStatementsForDoc() {
 }
 
 fetchDocs() {
+    useSparql=false;
     prefixes="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> PREFIX llo: <http://lodlaundromat.org/ontology/> PREFIX ll: <http://lodlaundromat.org/resource/>"
     offset=10
     docTpfs="?doc llo:triples ?triples ; llo:md5 ?md5 ."
     filters="FILTER(?triples >= $minTriples) "
     if [ -n "$maxTriples" ]; then
+        useSparql=true;
         filters="$filters FILTER(?triples <= $maxTriples) " 
     fi
     if [ -n "$minAvgInDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree >= $minAvgInDegree) "
     fi
     if [ -n "$maxAvgInDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree <= $maxAvgInDegree) "
     fi
     if [ -n "$minAvgOutDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree >= $minAvgOutDegree) "
     fi
     if [ -n "$maxAvgoutDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:outDegree/llm:mean ?avgOutDegree. FILTER(?avgOutDegree <= $maxAvgOutDegree) "
     fi
     if [ -n "$minAvgDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree >= $minAvgDegree) "
     fi
     if [ -n "$maxAvgDegree" ]; then
+        useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
-    #Start fetching docs
-    while true; do
-            limitOffset="LIMIT $limit OFFSET $offset";
-            
-            query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp} $limitOffset"
-            
-            #nicest approach would be to stream through results. For now, just take this quick approach
-            result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
-            
-            
-            while read -r line; do
-                if [ -z "$line" ]; then
-                    #just whitespace string
-                    continue
-                fi 
-                println=;
-                #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
-                if $download ; then 
+    
+    if [ $useSparql || -z $namespaceDocs ]; then
+    
+    
+    
+    
+        #Start fetching docs
+        while true; do
+                limitOffset="LIMIT $limit OFFSET $offset";
+                
+                query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp} $limitOffset"
+                
+                #nicest approach would be to stream through results. For now, just take this quick approach
+                result=$(curl -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
+                
+                
+                while read -r line; do
+                    if [ -z "$line" ]; then
+                        #just whitespace string
+                        continue
+                    fi 
+                    println=;
                     md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
-                    println="$downloadUrl/$md5"
-                fi
-                if $resource ; then
-                    r=$(echo "$line" | sed 's/^\"\([^\"]*\)\".*/\1/')
-                    if [ -z $println ]; then
-                        println="$r"
-                    else
-                        println="$println $r"
-                    fi
                     
+                    #we're filtering by namespace. If md5 does not occur in a dataset containing this ns, then skip it
+                    if [ -n "$namespaces" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
+                    
+                    
+                    #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
+                    if $download ; then 
+                        println="$downloadUrl/$md5"
+                    fi
+                    if $resource ; then
+                        r=$(echo "$line" | sed 's/^\"\([^\"]*\)\".*/\1/')
+                        if [ -z $println ]; then
+                            println="$r"
+                        else
+                            println="$println $r"
+                        fi
+                        
+                    fi
+                    echo $println;
+                done <<< "$result"
+                
+                
+                
+                
+                
+                if [ -z "$result" ]; then
+                    #no results left, we are done!
+                    exit 0;
                 fi
-                echo $println;
-            done <<< "$result"
-            
-            
-            
-            
-            
-            if [ -z "$result" ]; then
-                #no results left, we are done!
-                exit 0;
+                
+                
+                #up offset for next query
+                offset=`expr $offset + $limit`
+        done
+    else
+        #no need to use sparql. we're only filtering by namespace. Just return those documents
+        while read -r md5; do
+            println=;
+            $download && println="$downloadUrl/$md5"
+            if $resource; then
+                if [ -z $println ]; then
+                    println="$r"
+                else
+                    println="$println $r"
+                fi
+                echo $println
             fi
-            
-            
-            #up offset for next query
-            offset=`expr $offset + $limit`
-    done
+        done <<< "$namespaceDocs"
+        
+    fi
 }
 
 
@@ -692,6 +747,25 @@ fetchDocsForResources() {
         fi
     fi
 }
+
+namespaceDocs=
+fetchNamespaces() {
+    #if sub, pred or obj filter is set, check whether we can prune docs using our index
+    if [ -n "$namespaces" ]; then
+        while read -r namespace; do
+            echo "$namespace";
+            docs=`curl -Gs $ns2dIndex --data-urlencode "key=$namespace" | tr " " "\n"`
+            #if we've already got a doc list, then merge both
+            if [ -n "$namespaceDocs" ]; then
+               namespaceDocs=`comm -12  <(echo "$namespaceDocs") <(echo "$docs")`
+            else
+                namespaceDocs="$docs"
+            fi
+        done < <(tr ' ' '\n' <<< $namespaces)
+    fi
+}
+
+
 ##
 ## This is where we actually start doing stuff
 ##
@@ -726,6 +800,7 @@ if [[ "$mode" == "statements" ]]; then
         fi
     fi
 elif [[ "$mode" == "documents" ]]; then
+    fetchNamespaces
     fetchDocs
 elif [[ "$mode" == "meta" ]]; then
     showHelp=true
