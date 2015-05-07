@@ -570,7 +570,7 @@ fetchStatementsForDoc() {
         
         if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
             #Ah, in this case we've already looked up which documents to process. Check whether this md5 is one of them..
-            if ! grep -q "$md5" <<< "$filterForDocs"; then
+            if ! $filterForDocsFailed && ! grep -q "$md5" <<< "$filterForDocs"; then
                 return;
             fi
                 
@@ -737,16 +737,33 @@ fetchMeta() {
 
 
 filterForDocs=
+filterForDocsFailed=false
 fetchDocsForResources() {
     #if sub, pred or obj filter is set, check whether we can prune docs using our index
     if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
     
         if [ -n "$sub" ]; then
-            filterForDocs=`curl -Gs $r2dIndex --data-urlencode "key=$sub" | tr " " "\n"`
+            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$sub\""
+            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlStatus=$?;
+            if [ $curlStatus -gt 0 ]; then
+                echoerr "Failed fetching resources from index. Command: "
+                echoerr "$curlCmd";
+                filterForDocsFailed=true
+                return
+            fi
         fi
         
         if [ -n "$pred" ]; then
-            docs=`curl -Gs $r2dIndex --data-urlencode "key=$pred" | tr " " "\n"`
+            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
+            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlStatus=$?;
+            if [ $curlStatus -gt 0 ]; then
+                echoerr "Failed fetching resources from index. Command: "
+                echoerr "$curlCmd";
+                filterForDocsFailed=true
+                return
+            fi
             #if we've already got a doc list, then merge both
             if [ -n "$filterForDocs" ]; then
                 filterForDocs=`comm -12  <(echo "$filterForDocs") <(echo "$docs");`
@@ -756,7 +773,15 @@ fetchDocsForResources() {
         fi
         
         if [ -n "$obj" ]; then
-            docs=`curl -Gs $r2dIndex --data-urlencode "key=$obj" | tr " " "\n"`
+            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
+            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlStatus=$?;
+            if [ $curlStatus -gt 0 ]; then
+                echoerr "Failed fetching resources from index. Command: "
+                echoerr "$curlCmd";
+                filterForDocsFailed=true
+                return
+            fi
             #if we've already got a doc list, then merge both
             if [ -n "$filterForDocs" ]; then
                filterForDocs=`comm -12  <(echo "$filterForDocs") <(echo "$docs")`
@@ -810,7 +835,7 @@ if [[ "$mode" == "statements" ]]; then
     if $runForDocs ; then
         #no arguments and nothing piped.
         
-        if [ -n "$filterForDocs" ]; then
+        if ! $filterForDocsFailed [ -n "$filterForDocs" ]; then
             #we're filtering the results (by sub/pred/obj). I.e., we know where we need to be!
             #use this list
             while read -r md5; do
