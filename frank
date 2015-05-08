@@ -556,8 +556,6 @@ fetchStatementsForDoc() {
     #start with a sanity check (simple non-empty check)
     if [ -z "$1" ]; then return; fi
     
-    
-    
     #extract md5 from resource url
     md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
     
@@ -835,16 +833,16 @@ if [[ "$mode" == "statements" ]]; then
     if $runForDocs ; then
         #no arguments and nothing piped.
         
-        if ! $filterForDocsFailed [ -n "$filterForDocs" ]; then
+        if ! $filterForDocsFailed && [ -n "$filterForDocs" ]; then
             #we're filtering the results (by sub/pred/obj). I.e., we know where we need to be!
             #use this list
             while read -r md5; do
                 fetchStatementsForDoc "http://lodlaundromat.org/resource/$md5"
             done <<< "$filterForDocs"
         else
-            #download=false
-            #resource=true 
-        
+            #we want only want the download links from the documents function
+            download=false
+            resource=true 
             #Just use the whole lod cloud
             while read res ; do fetchStatementsForDoc "$res" ; done < <( fetchDocs )
         fi
