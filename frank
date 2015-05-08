@@ -756,7 +756,7 @@ fetchDocsForResources() {
         
         if [ -n "$pred" ]; then
             curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
-            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -774,7 +774,7 @@ fetchDocsForResources() {
         
         if [ -n "$obj" ]; then
             curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
-            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
