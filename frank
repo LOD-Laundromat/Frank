@@ -578,17 +578,20 @@ fetchStatementsForDoc() {
         quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
         
     	url="$ldfApi/$md5"
-    
+        page=1;
+        hasNext=true
 	    #while we have something to send request to, i.e. pagination has not finished yet for this document
-        while [ -n "$url" ]; do
-            response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj")
-            url=
+        while $hasNext; do
+            hasNext=false;
+            response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj" --data-urlencode "page=$page")
+            
             while read quad; do
                 #skip blank lines
                 if [ -z "$quad" ]; then continue; fi
                 if echo $quad | grep -qE '#metadata>\s*\.'; then
                     if echo $quad | grep -q 'nextPage'; then
-                        url=$(echo "$quad" | sed 's/.*nextPage>\s*<\(.*\)>\s*<.*/\1/')
+                        hasNext=true
+                        ((page++))
                     fi
                 else 
                     if $showGraph ; then
