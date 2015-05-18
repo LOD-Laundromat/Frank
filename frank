@@ -1,5 +1,5 @@
 #!/bin/bash
-
+curlUserAgent="-H \"User-Agent: Frank\""
 #first check bash version. needs to be 4+ to support associative arrays (used for keeping track of prefixes)
 associativeSupported=false
 if [ ${BASH_VERSION:0:1} -gt "3" ] ; then
@@ -563,7 +563,7 @@ fetchStatementsForDoc() {
     
     if [ -z "$sub" ] && [ -z "$pred" ] && [ -z "$obj" ] && ! $showGraph; then
 	   #just fetch gzip file. don't need to filter
-	   curl -Gs $downloadUrl/$md5 | zcat;
+	   curl -Gs $curlUserAgent $downloadUrl/$md5 | zcat;
     else
         
         if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
@@ -583,7 +583,7 @@ fetchStatementsForDoc() {
 	    #while we have something to send request to, i.e. pagination has not finished yet for this document
         while $hasNext; do
             hasNext=false;
-            response=$(curl -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj" --data-urlencode "page=$page")
+            response=$(curl $curlUserAgent -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj" --data-urlencode "page=$page")
             
             while read quad; do
                 #skip blank lines
@@ -665,7 +665,7 @@ fetchDocs() {
                 query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp $values} $limitOffset"
 
                 #nicest approach would be to stream through results. For now, just take this quick approach
-                result=$(curl -X POST -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
+                result=$(curl $curlUserAgent -X POST -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
                 
                 while read -r line; do
                     if [ -z "$line" ]; then
@@ -728,7 +728,7 @@ fetchMeta() {
     mainTPatterns="<$1> llm:metrics ?metricDoc ; ?pred ?obj ."
     optionalTPattern="?obj ?pred2 ?obj2 ."
     query="PREFIX llm: <http://lodlaundromat.org/metrics/ontology/> CONSTRUCT { $mainTPatterns $optionalTPattern } WHERE { $mainTPatterns OPTIONAL{$optionalTPattern}}"
-    response=`curl -Gs $endpoint --data-urlencode "query=$query" -H "Accept: text/plain"`
+    response=`curl $curlUserAgent -Gs $endpoint --data-urlencode "query=$query" -H "Accept: text/plain"`
     #the response may return '# Empty NT'
     echo "$response" | head -n 1 | grep "Empty NT" > /dev/null && return;
     echo "$response";
@@ -744,7 +744,7 @@ fetchDocsForResources() {
     if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
     
         if [ -n "$sub" ]; then
-            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$sub\""
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$sub\""
             filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
@@ -756,7 +756,7 @@ fetchDocsForResources() {
         fi
         
         if [ -n "$pred" ]; then
-            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
             docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
@@ -774,7 +774,7 @@ fetchDocsForResources() {
         fi
         
         if [ -n "$obj" ]; then
-            curlCmd="curl --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
             docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
@@ -799,7 +799,7 @@ fetchNamespaces() {
     #if sub, pred or obj filter is set, check whether we can prune docs using our index
     if [ -n "$namespaces" ]; then
         while read -r namespace; do
-            curlCmd="curl --fail -Gs $ns2dIndex --data-urlencode \"key=$namespace\""
+            curlCmd="curl $curlUserAgent --fail -Gs $ns2dIndex --data-urlencode \"key=$namespace\""
             docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
