@@ -584,8 +584,7 @@ fetchStatementsForDoc() {
         while $hasNext; do
             hasNext=false;
             response=$(curl $curlUserAgent -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj" --data-urlencode "page=$page")
-
-            while read quad; do
+            while read -r quad; do
                 #skip blank lines
                 if [ -z "$quad" ]; then continue; fi
                 if echo $quad | grep -qE '#metadata>\s*\.'; then
