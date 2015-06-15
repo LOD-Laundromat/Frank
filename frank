@@ -12,9 +12,9 @@ downloadUrl="http://download.lodlaundromat.org"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
-sparqlMaxDocsAsValues=50000 
+sparqlMaxDocsAsValues=50000
 echoerr() { echo "$@" 1>&2; }
-caterr() { 
+caterr() {
 while IFS= read  line; do
     echo "$line" 1>&2;
 done
@@ -40,7 +40,7 @@ show_statements_help() {
 caterr << EOF
 usage: ${0##*/} $mode [<args>] [<documentUri>]
 
-Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat. 
+Fetch statements from the LOD Cloud, using data hosted and cleaned by the LOD Laundromat.
 When a LOD Laundromat document reference (<documentUri>) is passed as parameter, statements are fetched from that document.
 Otherwise, statements are fetched from the complete LOD Cloud
 
@@ -57,7 +57,7 @@ Otherwise, statements are fetched from the complete LOD Cloud
         Filter statements by <object>
     -g
     --showGraph
-        Return quads, where the named graph is the reference to the LOD Laundromat resource 
+        Return quads, where the named graph is the reference to the LOD Laundromat resource
         of this particular dataset
 
 EOF
@@ -69,7 +69,7 @@ Usage: ${0##*/} $mode [<args>]
 
 Fetch LOD Laundromat document references
 
-    -h              
+    -h
         display this help and exit
     -b <buffer>
     --buffer <buffer>
@@ -91,14 +91,14 @@ Fetch LOD Laundromat document references
     --maxAvgDegree <maxAvgDegree>
         Only fetch documents with an average degree of maximum this amount
     --namespace <namespace>
-        Filter document for this namespace. Provide this flag several times to filter 
+        Filter document for this namespace. Provide this flag several times to filter
         for multiple namespaces ('OR' operation)
     --sparql <sparql-bgp>
-        Use your own SPARQL bgp to filter the results. Use ?doc to refer 
+        Use your own SPARQL bgp to filter the results. Use ?doc to refer
         to the current document. For more information on available properties,
-        check schema, or any resource 
+        check schema, or any resource
         (e.g. http://lodlaundromat.org/resource/e439f40f187906eb8e6223d57a77d24d)
-        Example: 
+        Example:
             {?doc llm:metrics/llm:IRILength/llm:std ?std .
             FILTER(?std >  50)}
         Available prefixes:
@@ -134,7 +134,7 @@ showGraph=false
 #documents options
 limit=50
 download=true
-resource=true 
+resource=true
 minTriples=1;
 maxTriples=
 minAvgOutDegree=
@@ -149,7 +149,7 @@ verbose=false;
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
 if [[ "$mode" != "statements" && "$mode" != "documents" && "$mode" != "meta" ]]; then show_main_help; exit 1; fi
-    
+
 if [[ "$mode" == "statements" ]]; then
     while [ "$#" -gt 0 ]; do
         case $1 in
@@ -180,7 +180,7 @@ if [[ "$mode" == "statements" ]]; then
                 echoerr 'ERROR: Must specify a non-empty "--subject <subject>" argument.' >&2
                 exit 1
                 ;;
-                
+
             ##parse predicate
             -p|--predicate)
                 if [ "$#" -gt 1 ]; then
@@ -195,11 +195,11 @@ if [[ "$mode" == "statements" ]]; then
             --predicate=?*)
                 pred=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --predicate=)  
+            --predicate=)
                 echoerr 'ERROR: Must specify a non-empty "--predicate <predicate>" argument.' >&2
                 exit 1
                 ;;
-                
+
              ##parse object
             -o|--object)
                 if [ "$#" -gt 1 ]; then
@@ -214,13 +214,13 @@ if [[ "$mode" == "statements" ]]; then
             --object=?*)
                 obj=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --object=) 
+            --object=)
                 echoerr 'ERROR: Must specify a non-empty "--object <object>" argument.' >&2
                 exit 1
                 ;;
-                
-                
-           
+
+
+
             -g|--showGraph)
                 showGraph=true;
                 ;;
@@ -234,7 +234,7 @@ if [[ "$mode" == "statements" ]]; then
             *)               # Default case: If no more options then break out of the loop.
                 break
         esac
-    
+
         shift
     done
 elif [[ "$mode" == "documents" ]]; then
@@ -263,11 +263,11 @@ elif [[ "$mode" == "documents" ]]; then
             --buffer=?*)
                 limit=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --buffer=)    
+            --buffer=)
                 echoerr 'ERROR: Must specify a non-empty "--buffer <buffer>" argument.' >&2
                 exit 1
                 ;;
-                
+
             ##parse min triples)
             --minTriples)
                 if [ "$#" -gt 1 ]; then
@@ -282,7 +282,7 @@ elif [[ "$mode" == "documents" ]]; then
             --minTriples=?*)
                 minTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --minTriples=)  
+            --minTriples=)
                 echoerr 'ERROR: Must specify a non-empty "--minTriples <minTriples>" argument.' >&2
                 exit 1
                 ;;
@@ -300,7 +300,7 @@ elif [[ "$mode" == "documents" ]]; then
             --maxTriples=?*)
                 maxTriples=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --maxTriples=)   
+            --maxTriples=)
                 echoerr 'ERROR: Must specify a non-empty "--maxTriples <maxTriples>" argument.' >&2
                 exit 1
                 ;;
@@ -318,7 +318,7 @@ elif [[ "$mode" == "documents" ]]; then
             --minAvgOutDegree=?*)
                 minAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --minAvgOutDegree=)  
+            --minAvgOutDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--minAvgOutDegree <minAvgOutDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -336,7 +336,7 @@ elif [[ "$mode" == "documents" ]]; then
             --maxAvgOutDegree=?*)
                 maxAvgOutDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --maxAvgOutDegree=)   
+            --maxAvgOutDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--maxAvgOutDegree <maxAvgOutDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -354,7 +354,7 @@ elif [[ "$mode" == "documents" ]]; then
             --minAvgInDegree=?*)
                 minAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --minAvgInDegree=)  
+            --minAvgInDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--minAvgInDegree <minAvgInDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -372,7 +372,7 @@ elif [[ "$mode" == "documents" ]]; then
             --maxAvgInDegree=?*)
                 maxAvgInDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --maxAvgInDegree=)   
+            --maxAvgInDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--maxAvgInDegree <maxAvgInDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -390,7 +390,7 @@ elif [[ "$mode" == "documents" ]]; then
             --minAvgDegree=?*)
                 minAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --minAvgDegree=)  
+            --minAvgDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--minAvgDegree <minAvgDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -408,7 +408,7 @@ elif [[ "$mode" == "documents" ]]; then
             --maxAvgDegree=?*)
                 maxAvgDegree=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --maxAvgDegree=)   
+            --maxAvgDegree=)
                 echoerr 'ERROR: Must specify a non-empty "--maxAvgDegree <maxAvgDegree>" argument.' >&2
                 exit 1
                 ;;
@@ -426,11 +426,11 @@ elif [[ "$mode" == "documents" ]]; then
             --sparql=?*)
                 bgp=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --sparql=)   
+            --sparql=)
                 echoerr 'ERROR: Must specify a non-empty "--sparql <sparql-bgp>" argument.' >&2
                 exit 1
                 ;;
-                
+
             ##parse namespace param)
             --namespace)
                 if [ "$#" -gt 1 ]; then
@@ -445,12 +445,12 @@ elif [[ "$mode" == "documents" ]]; then
             --namespace=?*)
                 namespaces=${1#*=} # Delete everything up to "=" and assign the remainder.
                 ;;
-            --namespace=)   
+            --namespace=)
                 echoerr 'ERROR: Must specify a non-empty "--namespace <namespace>" argument.' >&2
                 exit 1
                 ;;
-                
-             
+
+
             -d|--downloadUri)
                 resource=false;
                 ;;
@@ -467,13 +467,13 @@ elif [[ "$mode" == "documents" ]]; then
             *)               # Default case: If no more options then break out of the loop.
                 break
         esac
-    
+
         shift
     done
 elif [[ "$mode" == "meta" ]]; then
     while [ "$#" -gt 0 ]; do
         case $1 in
-            -h|-\?|--help)  
+            -h|-\?|--help)
                 show_meta_help
                 exit
                 ;;
@@ -492,7 +492,7 @@ elif [[ "$mode" == "meta" ]]; then
             *)               # Default case: If no more options then break out of the loop.
                 break
         esac
-    
+
         shift
     done
 fi
@@ -555,28 +555,28 @@ fi
 fetchStatementsForDoc() {
     #start with a sanity check (simple non-empty check)
     if [ -z "$1" ]; then return; fi
-    
+
     #extract md5 from resource url
     md5=$(sed 's/.*\/\([a-z0-9]\{32\}\).*/\1/' <<< "$1")
-    
-    if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi 
-    
+
+    if [ -z "$md5" ]; then echo "Not a valid LOD Laundromat document identifier: $1" && exit 1; fi
+
     if [ -z "$sub" ] && [ -z "$pred" ] && [ -z "$obj" ] && ! $showGraph; then
 	   #just fetch gzip file. don't need to filter
 	   curl -Gs $curlUserAgent $downloadUrl/$md5 | zcat;
     else
-        
+
         if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
             #Ah, in this case we've already looked up which documents to process. Check whether this md5 is one of them..
             if ! $filterForDocsFailed && ! grep -q "$md5" <<< "$filterForDocs"; then
                 return;
             fi
-                
+
         fi
-        
+
         #might need to use this var more often, so generate it once for this particular doc
         quadReplace=$(sed -e 's/[\/&]/\\&/g' <<< "$1")
-        
+
     	url="$ldfApi/$md5"
         page=1;
         hasNext=true
@@ -584,7 +584,7 @@ fetchStatementsForDoc() {
         while $hasNext; do
             hasNext=false;
             response=$(curl $curlUserAgent -Gs $url -H "Accept: application/n-quads" --data-urlencode "subject=$sub" --data-urlencode "predicate=$pred" --data-urlencode "object=$obj" --data-urlencode "page=$page")
-            
+
             while read quad; do
                 #skip blank lines
                 if [ -z "$quad" ]; then continue; fi
@@ -593,14 +593,14 @@ fetchStatementsForDoc() {
                         hasNext=true
                         ((page++))
                     fi
-                else 
+                else
                     if $showGraph ; then
                         echo "$quad" | sed "s/\(.*\)\.$/\1 <$quadReplace>./"
                     else
                         echo $quad;
                     fi
                 fi
-                
+
             done <<< "$response"
         done;
     fi;
@@ -614,7 +614,7 @@ fetchDocs() {
     filters="FILTER(?triples >= $minTriples) "
     if [ -n "$maxTriples" ]; then
         useSparql=true;
-        filters="$filters FILTER(?triples <= $maxTriples) " 
+        filters="$filters FILTER(?triples <= $maxTriples) "
     fi
     if [ -n "$minAvgInDegree" ]; then
         useSparql=true;
@@ -640,7 +640,7 @@ fetchDocs() {
         useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
-    
+
     if [ $useSparql ]; then
         values=
         if [ -n "$namespaceDocs" ]; then
@@ -656,30 +656,30 @@ fetchDocs() {
                 values="$values }";
             fi
         fi
-    
-    
+
+
         #Start fetching docs
         while true; do
                 limitOffset="LIMIT $limit OFFSET $offset";
-                
+
                 query="$prefixes SELECT ?doc ?md5 WHERE {$docTpfs $filters $bgp $values} $limitOffset"
 
                 #nicest approach would be to stream through results. For now, just take this quick approach
                 result=$(curl $curlUserAgent -X POST -s "$endpoint"  --data-urlencode "query=$query" -H 'Accept: text/csv' | sed '1d');
-                
+
                 while read -r line; do
                     if [ -z "$line" ]; then
                         #just whitespace string
                         continue
-                    fi 
+                    fi
                     println=;
                     md5=$(echo "$line" | sed 's/.*\"\([^\"]*\)\"$/\1/')
-                    
+
                     #we're filtering by namespace. If md5 does not occur in a dataset containing this ns, then skip it
                     [ -n "$namespaces" ] && [ -z "$values" ] && ! grep -q "$md5" <<< "$namespaceDocs" && continue;
-                    
+
                     #do some sed parsing. Easy, because we know there will be no quotes in the resultset (won't get literals)
-                    if $download ; then 
+                    if $download ; then
                         println="$downloadUrl/$md5"
                     fi
                     if $resource ; then
@@ -689,7 +689,7 @@ fetchDocs() {
                         else
                             println="$println $r"
                         fi
-                        
+
                     fi
                     echo $println;
                 done <<< "$result"
@@ -697,8 +697,8 @@ fetchDocs() {
                     #no results left, we are done!
                     exit 0;
                 fi
-                
-                
+
+
                 #up offset for next query
                 offset=`expr $offset + $limit`
         done
@@ -716,7 +716,7 @@ fetchDocs() {
                 echo $println
             fi
         done <<< "$namespaceDocs"
-        
+
     fi
 }
 
@@ -739,10 +739,11 @@ fetchMeta() {
 
 filterForDocs=
 filterForDocsFailed=false
+hasStatementFilter=false
 fetchDocsForResources() {
     #if sub, pred or obj filter is set, check whether we can prune docs using our index
     if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
-    
+        hasStatementFilter=true
         if [ -n "$sub" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$sub\""
             filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
@@ -754,7 +755,7 @@ fetchDocsForResources() {
                 return
             fi
         fi
-        
+
         if [ -n "$pred" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
             docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
@@ -772,7 +773,7 @@ fetchDocsForResources() {
                 filterForDocs="$docs"
             fi
         fi
-        
+
         if [ -n "$obj" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
             docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
@@ -789,7 +790,7 @@ fetchDocsForResources() {
             else
                 filterForDocs="$docs"
             fi
-            
+
         fi
     fi
 }
@@ -835,7 +836,13 @@ if [[ "$mode" == "statements" ]]; then
     fi
     if $runForDocs ; then
         #no arguments and nothing piped.
-        
+        if $hasStatementFilter && ! $filterForDocsFailed && [ -z "$filterForDocs" ]; then
+            #we're filtering statements, but could not find any related documents via our index
+            #i.e., nothing to return!
+            echoerr "No results found";
+            exit 0;
+        fi
+
         if ! $filterForDocsFailed && [ -n "$filterForDocs" ]; then
             #we're filtering the results (by sub/pred/obj). I.e., we know where we need to be!
             #use this list
@@ -845,7 +852,7 @@ if [[ "$mode" == "statements" ]]; then
         else
             #we want only want the download links from the documents function
             download=false
-            resource=true 
+            resource=true
             #Just use the whole lod cloud
             while read res ; do fetchStatementsForDoc "$res" ; done < <( fetchDocs )
         fi
@@ -869,8 +876,3 @@ elif [[ "$mode" == "meta" ]]; then
         show_meta_help
     fi
 fi
-
-
-
-
-
