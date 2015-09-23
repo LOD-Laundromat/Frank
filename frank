@@ -665,7 +665,7 @@ fetchDocs() {
         useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
-    if [ -z "$namespaceDocs" ]; then
+    if [ -z "$namespaces" ] || [ ${#namespaces[@]} -eq 0 ]; then
         #Not filtering by namespace. I.e., we might be filtering on nothing, and want all documents.
         #so, use sparql
         useSparql=true;
@@ -734,6 +734,10 @@ fetchDocs() {
     else
         #no need to use sparql. we're only filtering by namespace. Just return those documents
         while read -r md5; do
+            if [ -z "$md5" ]; then
+                #just whitespace string
+                continue
+            fi
             println=;
             $download && println="$downloadUrl/$md5"
             if $resource; then
