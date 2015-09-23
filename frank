@@ -536,7 +536,7 @@ if $associativeSupported; then
         #now try to substitute namespaces in namespaces array (used as filter)
         newNamespaces=()
         for ns in "${namespaces[@]}"; do
-            if [ "${ns:0:5}" == "http" ]; then
+            if [ "${ns:0:4}" == "http" ]; then
                 #use as-is
                 newNamespaces+=("$ns")
             else
@@ -553,7 +553,6 @@ if $associativeSupported; then
         namespaces=$newNamespaces
     fi
 fi
-
 #check whether we've found the full URI for any prefixed sub/pred/obj
 prefixRegex='^\w\+:\w\+$'
 if [ -n "$sub" ] && grep -q "$prefixRegex" <<< $sub; then
