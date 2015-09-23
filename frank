@@ -21,17 +21,6 @@ done
  }
 
 
-
-
-
-
-
-
-
-
-
-
-
 ##
 ## All documentation
 ##
@@ -677,8 +666,7 @@ fetchDocs() {
         useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
-
-    if [ $useSparql ]; then
+    if $useSparql; then
         values=
         if [ -n "$namespaceDocs" ]; then
             #first check whether we really want to include the ns docs
