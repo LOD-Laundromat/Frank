@@ -20,6 +20,18 @@ while IFS= read  line; do
 done
  }
 
+
+
+
+
+
+
+
+
+
+
+
+
 ##
 ## All documentation
 ##
@@ -144,7 +156,7 @@ maxAvgInDegree=
 minAvgDegree=
 maxAvgDegree=
 bgp=""
-namespaces=
+namespaces=()
 verbose=false;
 [ "$#" -eq "0" ] && show_main_help && exit;
 mode="$1";shift;
@@ -434,7 +446,7 @@ elif [[ "$mode" == "documents" ]]; then
             ##parse namespace param)
             --namespace)
                 if [ "$#" -gt 1 ]; then
-                    namespaces="$namespace $2"
+                    namespaces+=("$2")
                     shift 2
                     continue
                 else
@@ -443,7 +455,7 @@ elif [[ "$mode" == "documents" ]]; then
                 fi
                 ;;
             --namespace=?*)
-                namespaces=${1#*=} # Delete everything up to "=" and assign the remainder.
+                namespaces+=(${1#*=}) # Delete everything up to "=" and assign the remainder.
                 ;;
             --namespace=)
                 echoerr 'ERROR: Must specify a non-empty "--namespace <namespace>" argument.' >&2
@@ -500,10 +512,13 @@ fi
 
 
 
-#top25 of prefix.cc prefixes
+
 prefixes=false
 if $associativeSupported; then
+    #top25 of prefix.cc prefixes
     declare -A prefixes=(["yago"]="http://yago-knowledge.org/resource/" ["rdf"]="http://www.w3.org/1999/02/22-rdf-syntax-ns#" ["foaf"]="http://xmlns.com/foaf/0.1/" ["dbp"]="http://dbpedia.org/property/" ["dc"]="http://purl.org/dc/elements/1.1/" ["owl"]="http://www.w3.org/2002/07/owl#" ["rdfs"]="http://www.w3.org/2000/01/rdf-schema#" ["dbo"]="http://dbpedia.org/ontology/" ["ont"]="http://purl.org/net/ns/ontology-annot#" ["onto"]="http://www.ontotext.com/" ["skos"]="http://www.w3.org/2004/02/skos/core#" ["geo"]="http://www.w3.org/2003/01/geo/wgs84_pos#" ["rss"]="http://purl.org/rss/1.0/" ["gldp"]="http://www.w3.org/ns/people#" ["sioc"]="http://rdfs.org/sioc/ns#" ["fb"]="http://rdf.freebase.com/ns/" ["sc"]="http://purl.org/science/owl/sciencecommons/" ["geonames"]="http://www.geonames.org/ontology#" ["xsd"]="http://www.w3.org/2001/XMLSchema#" ["gr"]="http://purl.org/goodrelations/v1#" ["dcterms"]="http://purl.org/dc/terms/" ["dct"]="http://purl.org/dc/terms/" ["org"]="http://www.w3.org/ns/org#" ["dbpedia"]="http://dbpedia.org/resource/" ["qb"]="http://purl.org/linked-data/cube#" ["dbpprop"]="http://dbpedia.org/property/" ["void"]="http://rdfs.org/ns/void#")
+
+    #first try to substitute namespace for sub,pred,obj filters
     if [ -n "$sub" ]; then
         ns=`echo "$sub"| cut -d':' -f 1`
         if [ -n "${prefixes["$ns"]}" ]; then
@@ -524,6 +539,29 @@ if $associativeSupported; then
             localN=`echo "$obj"| cut -d':' -f 2`
             obj="${prefixes["$ns"]}$localN"
         fi
+    fi
+
+
+
+    if [ -n "$namespaces" ] && [ ${#namespaces[@]} -gt 0 ]; then
+        #now try to substitute namespaces in namespaces array (used as filter)
+        newNamespaces=()
+        for ns in "${namespaces[@]}"; do
+            if [ "${ns:0:5}" == "http" ]; then
+                #use as-is
+                newNamespaces+=("$ns")
+            else
+                #try substituting
+                if [ -n "${prefixes["$ns"]}" ]; then
+                    #found one in our list. add that value
+                    newNamespaces+=("${prefixes["$ns"]}")
+                else
+                    echoerr "Could not find prefix IRI for $ns. Using $ns as filter"
+                    newNamespaces+=("$ns")
+                fi
+            fi
+        done
+        namespaces=$newNamespaces
     fi
 fi
 
