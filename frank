@@ -666,6 +666,11 @@ fetchDocs() {
         useSparql=true;
         filters="$filters ?doc llm:metrics/llm:degree/llm:mean ?avgDegree. FILTER(?avgDegree <= $maxAvgDegree) "
     fi
+    if [ -z "$namespaceDocs" ]; then
+        #Not filtering by namespace. I.e., we might be filtering on nothing, and want all documents.
+        #so, use sparql
+        useSparql=true;
+    fi
     if $useSparql; then
         values=
         if [ -n "$namespaceDocs" ]; then
