@@ -9,6 +9,7 @@ command -v curl >/dev/null 2>&1 || { echo >&2 "Please install curl first"; exit 
 ldfApi="http://ldf.lodlaundromat.org"
 endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
+resourceUrl="http://lodlaundromat.org/resource"
 r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
@@ -742,12 +743,12 @@ fetchDocs() {
             $download && println="$downloadUrl/$md5"
             if $resource; then
                 if [ -z $println ]; then
-                    println="$r"
+                    println="$resourceUrl/$md5"
                 else
-                    println="$println $r"
+                    println="$println $resourceUrl/$md5"
                 fi
-                echo $println
             fi
+            [ -n "$println" ] && echo "$println"
         done <<< "$namespaceDocs"
 
     fi
