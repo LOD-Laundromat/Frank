@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 curlUserAgent="-H \"User-Agent: Frank\""
 #first check bash version. needs to be 4+ to support associative arrays (used for keeping track of prefixes)
 associativeSupported=false
