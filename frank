@@ -14,7 +14,7 @@ r2dIndex="http://index.lodlaundromat.org/get/r2d/"
 ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
 sparqlMaxDocsAsValues=50000
-echoerr() { echo "$@" 1>&2; }
+echoerr() { echo -e "\e[01;31m$@\e[0m" 1>&2; }
 caterr() {
 while IFS= read  line; do
     echo "$line" 1>&2;
@@ -546,7 +546,7 @@ if $associativeSupported; then
                     #found one in our list. add that value
                     newNamespaces+=("${prefixes["$ns"]}")
                 else
-                    echoerr "Could not find prefix IRI for $ns. Using $ns as filter"
+                    echoerr "Could not find prefix IRI for namespace name \"$ns\". Instead, filtering for documents that contain IRIs that start with \"<$ns\""
                     newNamespaces+=("$ns")
                 fi
             fi
