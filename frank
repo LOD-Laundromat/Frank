@@ -642,6 +642,9 @@ fetchDocs() {
         useSparql=true;
         filters="$filters FILTER(?triples <= $maxTriples) "
     fi
+    if [ "$minTriples" -gt "2" ]; then
+        useSparql=true;
+    fi
     if [ -n "$minAvgInDegree" ]; then
         useSparql=true;
         filters="$filters ?doc llm:metrics/llm:inDegree/llm:mean ?avgInDegree. FILTER(?avgInDegree >= $minAvgInDegree) "
