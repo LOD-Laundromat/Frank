@@ -75,7 +75,7 @@ Fetch LOD Laundromat document references
         display this help and exit
     -b <buffer>
     --buffer <buffer>
-        Buffer x documents references in memory. Default: 10
+        Buffer x documents references in memory. Default: 50
     --minTriples <minTriples>
         Only fetch documents with at least this amount of triples
     --maxTriples <maxTriples>
