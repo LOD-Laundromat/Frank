@@ -10,8 +10,8 @@ ldfApi="http://ldf.lodlaundromat.org"
 endpoint="http://sparql.backend.lodlaundromat.org/"
 downloadUrl="http://download.lodlaundromat.org"
 resourceUrl="http://lodlaundromat.org/resource"
-r2dIndex="http://index.lodlaundromat.org/get/r2d/"
-ns2dIndex="http://index.lodlaundromat.org/get/ns2d/"
+r2dIndex="http://index.lodlaundromat.org/r2d/"
+ns2dIndex="http://index.lodlaundromat.org/ns2d/"
 #limit how many values clauses we include in sparql. setting too high will result in gigantic and slow sparql queries
 sparqlMaxDocsAsValues=50000
 echoerr() { echo -e "\e[01;31m$@\e[0m" 1>&2; }
@@ -782,8 +782,8 @@ fetchDocsForResources() {
     if [ -n "$sub" ] || [ -n "$pred" ] || [ -n "$obj" ]; then
         hasStatementFilter=true
         if [ -n "$sub" ]; then
-            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$sub\""
-            filterForDocs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$sub"
+            filterForDocs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -794,8 +794,8 @@ fetchDocsForResources() {
         fi
 
         if [ -n "$pred" ]; then
-            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$pred\""
-            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$pred"
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -812,8 +812,8 @@ fetchDocsForResources() {
         fi
 
         if [ -n "$obj" ]; then
-            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex --data-urlencode \"key=$obj\""
-            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$obj"
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -837,8 +837,8 @@ fetchNamespaces() {
     #if sub, pred or obj filter is set, check whether we can prune docs using our index
     if [ -n "$namespaces" ]; then
         while read -r namespace; do
-            curlCmd="curl $curlUserAgent --fail -Gs $ns2dIndex --data-urlencode \"key=$namespace\""
-            docs=`eval $curlCmd | tr " " "\n"; exit ${PIPESTATUS[0]}`
+            curlCmd="curl $curlUserAgent --fail -Gs $ns2dIndex$namespace"
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching namespaces from index. Command: "
