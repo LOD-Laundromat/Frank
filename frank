@@ -783,7 +783,7 @@ fetchDocsForResources() {
         hasStatementFilter=true
         if [ -n "$sub" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$sub"
-            filterForDocs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
+            filterForDocs=`eval $curlCmd | tr "," "\n" | tail -n+5 |  sed '$ d' | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -795,7 +795,7 @@ fetchDocsForResources() {
 
         if [ -n "$pred" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$pred"
-            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | sed '$ d' | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -813,7 +813,7 @@ fetchDocsForResources() {
 
         if [ -n "$obj" ]; then
             curlCmd="curl $curlUserAgent --fail -Gs $r2dIndex$obj"
-            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | sed '$ d' | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching resources from index. Command: "
@@ -838,7 +838,7 @@ fetchNamespaces() {
     if [ -n "$namespaces" ]; then
         while read -r namespace; do
             curlCmd="curl $curlUserAgent --fail -Gs $ns2dIndex$namespace"
-            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | head -n-1 | tr -d '"'; exit ${PIPESTATUS[0]}`
+            docs=`eval $curlCmd | tr "," "\n" | tail -n+5 | sed '$ d' | tr -d '"'; exit ${PIPESTATUS[0]}`
             curlStatus=$?;
             if [ $curlStatus -gt 0 ]; then
                 echoerr "Failed fetching namespaces from index. Command: "
